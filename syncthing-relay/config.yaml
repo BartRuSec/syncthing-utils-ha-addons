@@ -1,0 +1,28 @@
+# Home Assistant Add-on Configuration
+name: Syncthing Relay
+version: 0.0.1
+slug: syncthing-relay
+description: Syncthing Relay Add-on for Home Assistant
+host_network: true
+arch:
+  - amd64
+  - armhf
+  - armv7
+  - aarch64
+init: false
+ports:
+  22067/tcp: 22067
+map:
+  - ssl:rw
+# Addon options
+
+options:
+  token: ""
+  keys_dir: "/ssl/syncthing-relay/keys"
+  NAT: false
+  pools: ""
+schema:
+  token: "str?"
+  keys_dir: "str"
+  NAT: bool
+  pools: "str?"

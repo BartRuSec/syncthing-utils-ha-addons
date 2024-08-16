@@ -1,0 +1,24 @@
+# Home Assistant Add-on Configuration
+name: Syncthing Discovery
+version: 0.0.1
+slug: syncthing-discovery
+description: Syncthing Discovery Add-on for Home Assistant
+arch:
+  - amd64
+  - armhf
+  - armv7
+  - aarch64
+init: false
+ports:
+  22843/tcp: 22843
+# Addon options
+map:
+  - homeassistant_config:rw
+  - ssl:rw
+options:
+  certfile: /ssl/fullchain.pem
+  keyfile: /ssl/privkey.pem
+  
+schema:
+  certfile: str
+  keyfile: str
