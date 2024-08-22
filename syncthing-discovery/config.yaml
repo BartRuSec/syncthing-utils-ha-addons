@@ -19,8 +19,8 @@ ports_description:
 map:
   - ssl:rw
 options:
-  certfile: fullchain.pem
-  keyfile: privkey.pem
+  certfile: /ssl/fullchain.pem
+  keyfile: /ssl/privkey.pem
 schema:
   certfile: str
   keyfile: str
