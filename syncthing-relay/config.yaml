@@ -1,24 +1,27 @@
-# Home Assistant Add-on Configuration
 name: Syncthing Relay
-version: 0.0.1
+version: 0.0.2
 slug: syncthing-relay
-description: Syncthing Relay Add-on for Home Assistant
-host_network: true
+description: Syncthing Relay server for Home Assistant
+url: "https://github.com/BartRuSec/syncthing-utils-ha-addons/tree/main/syncthing-relay"
+image: "ghcr.io/bartrusec/syncthing-relay-{arch}"
 arch:
+  - aarch64
   - amd64
   - armhf
   - armv7
-  - aarch64
+  - i386
 init: false
+startup: services
+host_network: true
 ports:
   22067/tcp: 22067
+ports_description:
+  22067/tcp: Syncthing Relay port
 map:
   - ssl:rw
-# Addon options
-
 options:
   token: ""
-  keys_dir: "/ssl/syncthing-relay/keys"
+  keys_dir: "syncthing-relay/keys"
   NAT: false
   pools: ""
 schema:

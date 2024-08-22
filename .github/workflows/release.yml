@@ -1,0 +1,75 @@
+name: Release
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch:
+env:
+  REGISTRY: ghcr.io
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      matrix:
+        addon: [syncthing-discovery, syncthing-relay]
+        arch: [amd64, armhf, armv7, aarch64]
+    steps:
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v4
+      
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate tags
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.addon }}-${{ matrix.arch }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha
+            type=raw,value=latest,enable=true
+
+      - name: Build and push ${{ matrix.addon }} ${{ matrix.arch }} image
+        uses: home-assistant/builder@master
+        if: github.event_name == 'push'
+        with:
+          args: |
+            --${{ matrix.arch }} \
+            --docker-hub $REGISTRY \
+            --image ${{ github.repository}}-${{ matrix.addon }}-{arch} \
+            --self-cache \
+            --no-latest \
+            --target ${{ matrix.addon }}
+
+      - name: Test Build ${{ matrix.addon }} ${{ matrix.arch }} image
+        uses: home-assistant/builder@master
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          args: |
+            --test 
+            --${{ matrix.arch }} \
+            --docker-hub $REGISTRY \
+            --image ${{ github.repository}}-${{ matrix.addon }}-{arch} \
+            --self-cache \
+            --no-latest \
+            --target ${{ matrix.addon }}
+
+
+
