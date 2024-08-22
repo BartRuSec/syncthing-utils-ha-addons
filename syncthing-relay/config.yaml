@@ -3,6 +3,7 @@ version: 0.0.2
 slug: syncthing-relay
 description: Syncthing Relay server for Home Assistant
 url: "https://github.com/BartRuSec/syncthing-utils-ha-addons/tree/main/syncthing-relay"
+image: "ghcr.io/bartrusec/syncthing-relay-{arch}"
 arch:
   - aarch64
   - amd64

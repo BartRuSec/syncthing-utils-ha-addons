@@ -3,6 +3,7 @@ version: 0.0.2
 slug: syncthing-discovery
 description: Syncthing Discovery server for Home Assistant
 url: "https://github.com/BartRuSec/syncthing-utils-ha-addons/tree/main/syncthing-discovery"
+image: "ghcr.io/bartrusec/syncthing-discovery-{arch}"
 arch:
   - aarch64
   - amd64
