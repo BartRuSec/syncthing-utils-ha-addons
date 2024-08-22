@@ -14,6 +14,9 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
     strategy:
       matrix:
         addon: [syncthing-discovery, syncthing-relay]
