@@ -1,16 +1,9 @@
 name: CI
-
 on:
   push:
-    branches:
-      - develop
     tags:
       - v*
-  pull_request:
-    branches:
-      - develop
   workflow_dispatch:
-
 env:
   REGISTRY: ghcr.io
 
@@ -46,22 +39,34 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.addon }}-${{ matrix.arch }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
             type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=true
 
       - name: Build and push ${{ matrix.addon }} ${{ matrix.arch }} image
         uses: home-assistant/builder@master
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'push'
         with:
           args: |
             --${{ matrix.arch }} \
             --docker-hub $REGISTRY \
             --image ${{ github.repository}}-${{ matrix.addon }}-{arch} \
             --self-cache \
-            --version $GITHUB_REF_SLUG \
             --no-latest \
             --target ${{ matrix.addon }}
+
+      - name: Test Build ${{ matrix.addon }} ${{ matrix.arch }} image
+        uses: home-assistant/builder@master
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          args: |
+            --test 
+            --${{ matrix.arch }} \
+            --docker-hub $REGISTRY \
+            --image ${{ github.repository}}-${{ matrix.addon }}-{arch} \
+            --self-cache \
+            --no-latest \
+            --target ${{ matrix.addon }}
+
+
+
