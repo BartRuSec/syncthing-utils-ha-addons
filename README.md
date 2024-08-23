@@ -31,8 +31,3 @@ This project is maintained by [BartRuSec](https://github.com/BartRuSec).
 This project is licensed under the terms of the MPL-2.0. For more information, see the [LICENSE](LICENSE) file.
 
 The Syncthing software itself is licensed under the terms of the MPL-2.0 license. For more information, see the [Syncthing License](https://github.com/syncthing/syncthing/blob/main/LICENSE).
-
-Syncthing Discovery
-=====================
-
-This is a discovery service for Syncthing.
