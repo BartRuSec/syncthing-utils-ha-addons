@@ -1,0 +1,96 @@
+name: Update Syncthing
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only report versions, do not bump, tag or release
+        type: boolean
+        default: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      bumped: ${{ steps.bump.outputs.bumped }}
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Current version (published image)
+        id: current
+        run: |
+          addon_version=$(sed -n 's/^version: *//p' syncthing-relay/config.yaml)
+          image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/syncthing-utils-ha-addons-syncthing-relay-amd64:${addon_version}"
+          current=unknown
+          if docker pull "$image"; then
+            current=$(docker run --rm --entrypoint apk "$image" info -v syncthing-utils)
+          fi
+          echo "version=${current}" >> "$GITHUB_OUTPUT"
+
+      - name: Newest version (what a rebuild would install)
+        id: newest
+        run: |
+          base_image=$(sed -n 's/^ *amd64: *//p' syncthing-relay/build.yaml)
+          newest=$(docker run --rm "$base_image" sh -c 'apk update >/dev/null && apk search -e -v syncthing-utils')
+          echo "version=${newest}" >> "$GITHUB_OUTPUT"
+
+      - name: Compare
+        id: compare
+        run: |
+          if [ "${{ steps.current.outputs.version }}" = "unknown" ]; then
+            echo "newer=false" >> "$GITHUB_OUTPUT"
+            echo "No published image found for the current add-on version; do the first release manually." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.current.outputs.version }}" = "${{ steps.newest.outputs.version }}" ]; then
+            echo "newer=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "newer=true" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "| | syncthing-utils |"
+            echo "|---|---|"
+            echo "| Current build | ${{ steps.current.outputs.version }} |"
+            echo "| Newest available | ${{ steps.newest.outputs.version }} |"
+            echo
+            echo "Newer available: $(grep newer "$GITHUB_OUTPUT" | cut -d= -f2)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Bump add-on version and tag
+        id: bump
+        if: steps.compare.outputs.newer == 'true' && github.event.inputs.dry_run != 'true'
+        run: |
+          current=$(sed -n 's/^version: *//p' syncthing-relay/config.yaml)
+          new="${current%.*}.$(( ${current##*.} + 1 ))"
+          sed -i "s/^version: .*/version: ${new}/" syncthing-discovery/config.yaml syncthing-relay/config.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for changelog in syncthing-discovery/CHANGELOG.md syncthing-relay/CHANGELOG.md; do
+            { head -n 1 "$changelog"; printf '\n## %s\n\n- Updated syncthing-utils from %s to %s\n' "$new" "${{ steps.current.outputs.version }}" "${{ steps.newest.outputs.version }}"; tail -n +2 "$changelog"; } > "$changelog.tmp"
+            mv "$changelog.tmp" "$changelog"
+          done
+          git add syncthing-discovery/config.yaml syncthing-relay/config.yaml syncthing-discovery/CHANGELOG.md syncthing-relay/CHANGELOG.md
+          git commit -m "Bump add-ons to ${new} (syncthing-utils ${{ steps.newest.outputs.version }})"
+          git tag "v${new}"
+          git push origin HEAD "v${new}"
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
+          echo "version=${new}" >> "$GITHUB_OUTPUT"
+          echo "Bumped to ${new} and tagged v${new}" >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    needs: check
+    if: needs.check.outputs.bumped == 'true'
+    # Tags pushed with GITHUB_TOKEN don't trigger release.yml, so call it directly
+    uses: ./.github/workflows/release.yml
+    permissions:
+      packages: write
+      contents: read
+    with:
+      publish: true
+      ref: v${{ needs.check.outputs.version }}

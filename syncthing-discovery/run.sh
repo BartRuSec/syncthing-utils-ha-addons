@@ -7,4 +7,4 @@ bashio::log.info "Keyfile: ${KEYFILE}"
 
 mkdir -p /homeassistant/syncthing-discovery/
 
-/usr/bin/stdiscosrv -key=${KEYFILE} -cert=${CERTFILE} -listen=:22843 -db-dir=/homeassistant/syncthing-discovery/discovery.db
+/usr/bin/stdiscosrv --key=${KEYFILE} --cert=${CERTFILE} --listen=:22843 --db-dir=/homeassistant/syncthing-discovery/discovery.db

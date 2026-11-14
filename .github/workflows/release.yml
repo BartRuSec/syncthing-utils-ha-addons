@@ -4,6 +4,16 @@ on:
     tags:
       - v*
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      publish:
+        description: Build and push images (otherwise test build only)
+        type: boolean
+        default: false
+      ref:
+        description: Git ref to build (defaults to the caller's ref)
+        type: string
+        default: ""
 env:
   REGISTRY: ghcr.io
 
@@ -20,13 +30,15 @@ jobs:
     strategy:
       matrix:
         addon: [syncthing-discovery, syncthing-relay]
-        arch: [amd64, armhf, armv7, aarch64]
+        arch: [amd64, armhf, armv7, aarch64, i386]
     steps:
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v4
       
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
@@ -48,7 +60,7 @@ jobs:
 
       - name: Build and push ${{ matrix.addon }} ${{ matrix.arch }} image
         uses: home-assistant/builder@master
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || inputs.publish
         with:
           args: |
             --${{ matrix.arch }} \
@@ -60,7 +72,7 @@ jobs:
 
       - name: Test Build ${{ matrix.addon }} ${{ matrix.arch }} image
         uses: home-assistant/builder@master
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name != 'push' && !inputs.publish
         with:
           args: |
             --test 
