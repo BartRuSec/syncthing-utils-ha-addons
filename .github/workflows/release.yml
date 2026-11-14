@@ -75,7 +75,7 @@ jobs:
         if: github.event_name != 'push' && !inputs.publish
         with:
           args: |
-            --test 
+            --test \
             --${{ matrix.arch }} \
             --docker-hub $REGISTRY \
             --image ${{ github.repository}}-${{ matrix.addon }}-{arch} \
