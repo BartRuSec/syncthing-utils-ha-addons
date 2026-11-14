@@ -2,8 +2,9 @@
 
 ## 0.0.4
 
-- Discovery database moved to `/homeassistant/syncthing-discovery/records.db`; the old `discovery.db/` LevelDB directory is no longer used and can be deleted
-- Fixed the missing database directory on fresh installs (the database could not be read or saved)
+- Discovery database is now stored in the add-on's persistent `/data/discovery` directory (previously a path inside the container that was not mounted, so it could not be saved and was lost on updates)
+- The old `discovery.db/` LevelDB directory is no longer used
+- Fixed the `Error writing database` messages in the log
 
 ## 0.0.3
 
