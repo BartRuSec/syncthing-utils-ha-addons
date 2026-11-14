@@ -31,7 +31,7 @@ jobs:
           image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/syncthing-utils-ha-addons-syncthing-relay-amd64:${addon_version}"
           current=unknown
           if docker pull "$image"; then
-            current=$(docker run --rm --entrypoint apk "$image" info -v syncthing-utils)
+            current=$(docker run --rm --entrypoint sh "$image" -c 'apk list -I syncthing-utils 2>/dev/null | head -n 1 | cut -d" " -f1')
           fi
           echo "version=${current}" >> "$GITHUB_OUTPUT"
 
@@ -39,7 +39,7 @@ jobs:
         id: newest
         run: |
           base_image=$(sed -n 's/^ *amd64: *//p' syncthing-relay/build.yaml)
-          newest=$(docker run --rm "$base_image" sh -c 'apk update >/dev/null && apk search -e -v syncthing-utils')
+          newest=$(docker run --rm --entrypoint sh "$base_image" -c 'apk update >/dev/null 2>&1 && apk search -e -v syncthing-utils 2>/dev/null | head -n 1 | cut -d" " -f1')
           echo "version=${newest}" >> "$GITHUB_OUTPUT"
 
       - name: Compare
