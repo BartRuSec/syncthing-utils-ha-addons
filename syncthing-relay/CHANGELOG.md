@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.4
+
+- No functional changes (version aligned with syncthing-discovery)
+
 ## 0.0.3
 
 - Updated `syncthing-utils` to 1.29.5 (Alpine 3.22 base image, now pinned in `build.yaml`)
