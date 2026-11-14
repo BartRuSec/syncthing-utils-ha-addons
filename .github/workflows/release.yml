@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         addon: [syncthing-discovery, syncthing-relay]
-        arch: [amd64, armhf, armv7, aarch64, i386]
+        arch: [amd64, aarch64]
     steps:
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v4
