@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0
+
+- Updated `syncthing-utils` to 2.1.x (Alpine 3.24 base image)
+- Log output now uses the structured format of Syncthing 2; no option changes
+
 ## 0.0.5
 
 - Build migrated to the current Home Assistant build actions and a pinned base image in the Dockerfile; no functional changes

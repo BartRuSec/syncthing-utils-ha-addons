@@ -1,4 +1,4 @@
-FROM ghcr.io/home-assistant/base:3.22
+FROM ghcr.io/home-assistant/base:3.24
 
 LABEL \
   org.opencontainers.image.title="Syncthing Relay" \

@@ -1,5 +1,5 @@
 name: Syncthing Discovery
-version: 0.0.5
+version: 0.1.0
 slug: syncthing-discovery
 description: Syncthing Discovery server for Home Assistant
 url: "https://github.com/BartRuSec/syncthing-utils-ha-addons/tree/main/syncthing-discovery"
