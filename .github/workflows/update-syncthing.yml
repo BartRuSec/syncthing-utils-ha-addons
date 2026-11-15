@@ -22,7 +22,7 @@ jobs:
       version: ${{ steps.bump.outputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Current version (published image)
         id: current
@@ -44,22 +44,59 @@ jobs:
 
       - name: Compare
         id: compare
+        env:
+          CURRENT: ${{ steps.current.outputs.version }}
+          NEWEST: ${{ steps.newest.outputs.version }}
         run: |
-          if [ "${{ steps.current.outputs.version }}" = "unknown" ]; then
-            echo "newer=false" >> "$GITHUB_OUTPUT"
-            echo "No published image found for the current add-on version; do the first release manually." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.current.outputs.version }}" = "${{ steps.newest.outputs.version }}" ]; then
-            echo "newer=false" >> "$GITHUB_OUTPUT"
+          current="${CURRENT#syncthing-utils-}"
+          newest="${NEWEST#syncthing-utils-}"
+          newer=false
+          if [ "$CURRENT" = "unknown" ]; then
+            note="No published image found for the current add-on version; do the first release manually."
+          elif [ -z "$NEWEST" ]; then
+            note="Could not determine the newest version from the base image."
+          elif [ "$current" = "$newest" ]; then
+            note="Up to date."
+          elif [ "${current%%.*}" != "${newest%%.*}" ]; then
+            note="Major version change (${current} -> ${newest}); release it manually."
           else
-            echo "newer=true" >> "$GITHUB_OUTPUT"
+            newer=true
+            note="Newer version available."
           fi
+          {
+            echo "newer=${newer}"
+            echo "current=${current}"
+            echo "newest=${newest}"
+          } >> "$GITHUB_OUTPUT"
           {
             echo "| | syncthing-utils |"
             echo "|---|---|"
-            echo "| Current build | ${{ steps.current.outputs.version }} |"
-            echo "| Newest available | ${{ steps.newest.outputs.version }} |"
+            echo "| Current build | ${current} |"
+            echo "| Newest in base image | ${newest} |"
             echo
-            echo "Newer available: $(grep newer "$GITHUB_OUTPUT" | cut -d= -f2)"
+            echo "${note}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upstream and Alpine info
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          upstream=$(gh api repos/syncthing/syncthing/releases/latest --jq .tag_name || echo unknown)
+          base_tag=$(sed -n 's#^FROM ghcr.io/home-assistant/base:##p' syncthing-relay/Dockerfile | head -n 1)
+          next_tag="${base_tag%%.*}.$(( ${base_tag#*.} + 1 ))"
+          token=$(curl -s "https://ghcr.io/token?scope=repository:home-assistant/base:pull" | jq -r .token)
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${token}" -H 'Accept: application/vnd.oci.image.index.v1+json' "https://ghcr.io/v2/home-assistant/base/manifests/${next_tag}")
+          [ "$code" = "200" ] && next_state="available" || next_state="not published yet"
+          {
+            echo
+            echo "| Info | |"
+            echo "|---|---|"
+            echo "| Upstream Syncthing release | ${upstream} |"
+            echo "| Alpine base in Dockerfile | ${base_tag} |"
+            echo "| Next Alpine base (${next_tag}) | ${next_state} |"
+            echo
+            echo "Changing the Alpine base (and so possibly the Syncthing major/minor) is a manual release: edit the \`FROM\` line of both Dockerfiles and bump \`version:\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Bump add-on version and tag
@@ -72,11 +109,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           for changelog in syncthing-discovery/CHANGELOG.md syncthing-relay/CHANGELOG.md; do
-            { head -n 1 "$changelog"; printf '\n## %s\n\n- Updated syncthing-utils from %s to %s\n' "$new" "${{ steps.current.outputs.version }}" "${{ steps.newest.outputs.version }}"; tail -n +2 "$changelog"; } > "$changelog.tmp"
+            { head -n 1 "$changelog"; printf '\n## %s\n\n- Updated syncthing-utils from %s to %s\n' "$new" "${{ steps.compare.outputs.current }}" "${{ steps.compare.outputs.newest }}"; tail -n +2 "$changelog"; } > "$changelog.tmp"
             mv "$changelog.tmp" "$changelog"
           done
           git add syncthing-discovery/config.yaml syncthing-relay/config.yaml syncthing-discovery/CHANGELOG.md syncthing-relay/CHANGELOG.md
-          git commit -m "Bump add-ons to ${new} (syncthing-utils ${{ steps.newest.outputs.version }})"
+          git commit -m "Bump add-ons to ${new} (syncthing-utils ${{ steps.compare.outputs.newest }})"
           git tag "v${new}"
           git push origin HEAD "v${new}"
           echo "bumped=true" >> "$GITHUB_OUTPUT"
