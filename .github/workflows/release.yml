@@ -31,6 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         addon: [syncthing-discovery, syncthing-relay]
+        arch: [amd64, aarch64]
         include:
           - arch: amd64
             os: ubuntu-24.04
