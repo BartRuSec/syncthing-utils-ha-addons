@@ -38,7 +38,7 @@ jobs:
       - name: Newest version (what a rebuild would install)
         id: newest
         run: |
-          base_image=$(sed -n 's/^ *amd64: *//p' syncthing-relay/build.yaml)
+          base_image=$(sed -n 's/^FROM //p' syncthing-relay/Dockerfile | head -n 1)
           newest=$(docker run --rm --entrypoint sh "$base_image" -c 'apk update >/dev/null 2>&1 && apk search -e -v syncthing-utils 2>/dev/null | head -n 1 | cut -d" " -f1')
           echo "version=${newest}" >> "$GITHUB_OUTPUT"
 
@@ -89,8 +89,9 @@ jobs:
     # Tags pushed with GITHUB_TOKEN don't trigger release.yml, so call it directly
     uses: ./.github/workflows/release.yml
     permissions:
-      packages: write
       contents: read
+      id-token: write
+      packages: write
     with:
       publish: true
       ref: v${{ needs.check.outputs.version }}

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.5
+
+- Build migrated to the current Home Assistant build actions and a pinned base image in the Dockerfile; no functional changes
+
 ## 0.0.4
 
 - Discovery database is now stored in the add-on's persistent `/data/discovery` directory (previously a path inside the container that was not mounted, so it could not be saved and was lost on updates)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.5
+
+- Build migrated to the current Home Assistant build actions and a pinned base image in the Dockerfile; no functional changes
+
 ## 0.0.4
 
 - No functional changes (version aligned with syncthing-discovery)

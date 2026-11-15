@@ -14,8 +14,6 @@ on:
         description: Git ref to build (defaults to the caller's ref)
         type: string
         default: ""
-env:
-  REGISTRY: ghcr.io
 
 concurrency:
   group: ${{ github.ref }}
@@ -23,65 +21,52 @@ concurrency:
 
 jobs:
   build-and-publish:
-    runs-on: ubuntu-latest
+    name: Build ${{ matrix.addon }} ${{ matrix.arch }} image
+    runs-on: ${{ matrix.os }}
     permissions:
-      packages: write
-      contents: read
+      contents: read # To check out the code
+      id-token: write # Needed for Cosign signing
+      packages: write # To push images to GitHub Container Registry
     strategy:
+      fail-fast: false
       matrix:
         addon: [syncthing-discovery, syncthing-relay]
-        arch: [amd64, aarch64]
+        include:
+          - arch: amd64
+            os: ubuntu-24.04
+          - arch: aarch64
+            os: ubuntu-24.04-arm
     steps:
-      - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v4
-      
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
+      - name: Read add-on manifest
+        id: manifest
+        run: |
+          {
+            echo "version=$(sed -n 's/^version: *//p' ${{ matrix.addon }}/config.yaml)"
+            echo "name=$(sed -n 's/^name: *//p' ${{ matrix.addon }}/config.yaml)"
+            echo "description=$(sed -n 's/^description: *//p' ${{ matrix.addon }}/config.yaml)"
+            echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.addon }}-${{ matrix.arch }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build ${{ matrix.addon }} ${{ matrix.arch }} image
+        uses: home-assistant/builder/actions/build-image@2026.09.0
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate tags
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.addon }}-${{ matrix.arch }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=sha
-            type=raw,value=latest,enable=true
-
-      - name: Build and push ${{ matrix.addon }} ${{ matrix.arch }} image
-        uses: home-assistant/builder@master
-        if: github.event_name == 'push' || inputs.publish
-        with:
-          args: |
-            --${{ matrix.arch }} \
-            --docker-hub $REGISTRY \
-            --image ${{ github.repository}}-${{ matrix.addon }}-{arch} \
-            --self-cache \
-            --no-latest \
-            --target ${{ matrix.addon }}
-
-      - name: Test Build ${{ matrix.addon }} ${{ matrix.arch }} image
-        uses: home-assistant/builder@master
-        if: github.event_name != 'push' && !inputs.publish
-        with:
-          args: |
-            --test \
-            --${{ matrix.arch }} \
-            --docker-hub $REGISTRY \
-            --image ${{ github.repository}}-${{ matrix.addon }}-{arch} \
-            --self-cache \
-            --no-latest \
-            --target ${{ matrix.addon }}
-
-
-
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          context: ${{ matrix.addon }}
+          image: ${{ steps.manifest.outputs.image }}
+          image-tags: ${{ steps.manifest.outputs.version }}
+          labels: |
+            io.hass.type=app
+            io.hass.name=${{ steps.manifest.outputs.name }}
+            io.hass.description=${{ steps.manifest.outputs.description }}
+            io.hass.url=https://github.com/${{ github.repository }}/tree/main/${{ matrix.addon }}
+            io.hass.arch=${{ matrix.arch }}
+            io.hass.version=${{ steps.manifest.outputs.version }}
+          push: ${{ github.event_name == 'push' || inputs.publish }}
+          skip-existing: ${{ steps.manifest.outputs.version }}
+          version: ${{ steps.manifest.outputs.version }}
